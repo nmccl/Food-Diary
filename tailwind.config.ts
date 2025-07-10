@@ -61,7 +61,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				breakfast: 'hsl(var(--breakfast))',
+				lunch: 'hsl(var(--lunch))',
+				dinner: 'hsl(var(--dinner))',
+				snacks: 'hsl(var(--snacks))',
+				drinks: 'hsl(var(--drinks))',
+				vitamins: 'hsl(var(--vitamins))'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
