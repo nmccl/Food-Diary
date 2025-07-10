@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Coffee, Clock, Utensils, Cookie, Droplets, Pill } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Coffee, Clock, Utensils, Cookie, Droplets, Pill, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { toZonedTime, format } from 'date-fns-tz';
+import { useNavigate } from 'react-router-dom';
 
 interface FoodEntry {
   id: string;
@@ -30,9 +32,13 @@ const categoryConfig = {
 };
 
 const FoodDiary = () => {
+  const navigate = useNavigate();
+  const PDT_TIMEZONE = 'America/Los_Angeles';
+  
   const [currentDate, setCurrentDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+    const now = new Date();
+    const pdtDate = toZonedTime(now, PDT_TIMEZONE);
+    return format(pdtDate, 'yyyy-MM-dd', { timeZone: PDT_TIMEZONE });
   });
   
   const [dayData, setDayData] = useState<DayData>({
@@ -44,6 +50,62 @@ const FoodDiary = () => {
   const [newEntry, setNewEntry] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof categoryConfig>('breakfast');
   const { toast } = useToast();
+
+  // Check for midnight PDT and save to summary
+  useEffect(() => {
+    const checkMidnight = () => {
+      const now = new Date();
+      const pdtDate = toZonedTime(now, PDT_TIMEZONE);
+      const hour = pdtDate.getHours();
+      const minute = pdtDate.getMinutes();
+      
+      // If it's 12:00 AM PDT, save yesterday's data to summary
+      if (hour === 0 && minute === 0) {
+        const yesterday = new Date(pdtDate);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = format(yesterday, 'yyyy-MM-dd', { timeZone: PDT_TIMEZONE });
+        
+        const yesterdayData = localStorage.getItem(`food-diary-${yesterdayKey}`);
+        if (yesterdayData) {
+          const summaryData = JSON.parse(localStorage.getItem('food-diary-summary') || '[]');
+          const parsedData = JSON.parse(yesterdayData);
+          
+          // Only add if not already in summary
+          if (!summaryData.find((entry: any) => entry.date === yesterdayKey)) {
+            summaryData.push({
+              date: yesterdayKey,
+              totalEntries: parsedData.entries.length,
+              categoriesUsed: [...new Set(parsedData.entries.map((e: FoodEntry) => e.category))],
+              hasNotes: parsedData.notes.length > 0,
+              data: parsedData
+            });
+            localStorage.setItem('food-diary-summary', JSON.stringify(summaryData));
+          }
+        }
+      }
+    };
+
+    // Check immediately and then every minute
+    checkMidnight();
+    const interval = setInterval(checkMidnight, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update current date every minute to stay in sync with PDT
+  useEffect(() => {
+    const updateDate = () => {
+      const now = new Date();
+      const pdtDate = toZonedTime(now, PDT_TIMEZONE);
+      const newDate = format(pdtDate, 'yyyy-MM-dd', { timeZone: PDT_TIMEZONE });
+      
+      if (newDate !== currentDate) {
+        setCurrentDate(newDate);
+      }
+    };
+
+    const interval = setInterval(updateDate, 60000);
+    return () => clearInterval(interval);
+  }, [currentDate]);
 
   // Load data from localStorage
   useEffect(() => {
@@ -111,19 +173,16 @@ const FoodDiary = () => {
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
-    const date = new Date(currentDate);
-    date.setDate(date.getDate() + (direction === 'next' ? 1 : -1));
-    setCurrentDate(date.toISOString().split('T')[0]);
+    const currentPdtDate = toZonedTime(new Date(currentDate), PDT_TIMEZONE);
+    currentPdtDate.setDate(currentPdtDate.getDate() + (direction === 'next' ? 1 : -1));
+    setCurrentDate(format(currentPdtDate, 'yyyy-MM-dd', { timeZone: PDT_TIMEZONE }));
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    const date = toZonedTime(new Date(dateString), PDT_TIMEZONE);
+    const formatted = format(date, 'EEEE, MMMM do, yyyy', { timeZone: PDT_TIMEZONE });
+    const time = format(toZonedTime(new Date(), PDT_TIMEZONE), 'h:mm a', { timeZone: PDT_TIMEZONE });
+    return `${formatted} (PDT) - ${time}`;
   };
 
   const getEntriesByCategory = (category: keyof typeof categoryConfig) => {
@@ -165,6 +224,16 @@ const FoodDiary = () => {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+          
+          {/* Summary Button */}
+          <Button 
+            onClick={() => navigate('/summary')}
+            variant="outline"
+            className="border-accent/50 hover:bg-accent/10 text-accent hover:text-accent"
+          >
+            <BarChart3 className="h-4 w-4 mr-2" />
+            View Summary
+          </Button>
         </div>
 
         {/* Add New Entry */}
