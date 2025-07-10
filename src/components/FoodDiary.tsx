@@ -245,16 +245,18 @@ const FoodDiary = () => {
             <div className="flex flex-wrap gap-2">
               {Object.entries(categoryConfig).map(([key, config]) => {
                 const Icon = config.icon;
+                const shortLabel = key === 'vitamins' ? 'Vitamins' : config.label;
                 return (
                   <Button
                     key={key}
                     variant={selectedCategory === key ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(key as keyof typeof categoryConfig)}
-                    className={selectedCategory === key ? config.color : "border-primary/20 hover:bg-primary/5"}
+                    className={`${selectedCategory === key ? config.color : "border-primary/20 hover:bg-primary/5"} text-xs sm:text-sm`}
+                    title={config.label} // Show full text on hover
                   >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {config.label}
+                    <Icon className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="truncate">{shortLabel}</span>
                   </Button>
                 );
               })}
@@ -285,11 +287,13 @@ const FoodDiary = () => {
               <Card key={category} className="border-primary/10 shadow-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-foreground">
-                    <div className={`p-2 rounded-lg ${config.color} text-white`}>
+                    <div className={`p-2 rounded-lg ${config.color} text-white flex-shrink-0`}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    {config.label}
-                    <Badge variant="secondary" className="ml-auto">
+                    <span className="flex-1 min-w-0 text-sm font-medium truncate">
+                      {config.label}
+                    </span>
+                    <Badge variant="secondary" className="flex-shrink-0">
                       {entries.length}
                     </Badge>
                   </CardTitle>
